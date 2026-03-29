@@ -1,0 +1,40 @@
+{% if products or tenants %}
+<div class="p-2">
+    {% if tenants %}
+    <div class="mb-2">
+        <p class="text-xs font-bold text-gray-400 px-2 mb-1">TENANT</p>
+        {% for tenant in tenants %}
+        <a href="{% url 'tenant_detail' tenant.slug %}" class="flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-gray-50 transition-all">
+            <span class="text-lg">{{ tenant.category.icon }}</span>
+            <div>
+                <p class="text-sm font-semibold text-gray-800">{{ tenant.name }}</p>
+                <p class="text-xs text-gray-400">{{ tenant.category.name }}</p>
+            </div>
+        </a>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if products %}
+    <div>
+        <p class="text-xs font-bold text-gray-400 px-2 mb-1">MENU</p>
+        {% for product in products %}
+        <a href="{% url 'tenant_detail' product.tenant.slug %}" class="flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-gray-50 transition-all">
+            <div class="w-8 h-8 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
+                {% if product.image %}
+                <img src="{{ product.image.url }}" alt="{{ product.name }}" class="w-full h-full object-cover">
+                {% else %}
+                <div class="w-full h-full img-placeholder flex items-center justify-center">🍽️</div>
+                {% endif %}
+            </div>
+            <div class="flex-1">
+                <p class="text-sm font-semibold text-gray-800">{{ product.name }}</p>
+                <p class="text-xs text-gray-400">{{ product.tenant.name }}</p>
+            </div>
+            <p class="text-xs font-bold text-primary-500">{{ product.formatted_price }}</p>
+        </a>
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
+{% endif %}

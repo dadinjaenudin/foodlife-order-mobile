@@ -1,0 +1,188 @@
+{% extends 'base.html' %}
+
+{% block title %}Pembayaran - FoodCourt{% endblock %}
+
+{% block extra_head %}
+<style>
+    .countdown { font-variant-numeric: tabular-nums; }
+    .payment-pulse { animation: paymentPulse 2s infinite; }
+    @keyframes paymentPulse {
+        0%, 100% { box-shadow: 0 0 0 0 rgba(249, 115, 22, 0.4); }
+        50% { box-shadow: 0 0 0 15px rgba(249, 115, 22, 0); }
+    }
+    .qr-container { position: relative; }
+    .qr-container::before {
+        content: '';
+        position: absolute;
+        top: -3px; left: -3px; right: -3px; bottom: -3px;
+        background: linear-gradient(45deg, #f97316, #ea580c, #f97316, #fb923c);
+        border-radius: 20px;
+        background-size: 400% 400%;
+        animation: borderAnim 3s ease infinite;
+        z-index: -1;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="px-4 pt-4" x-data="paymentTimer()" x-init="startTimer()">
+    <!-- Header -->
+    <div class="text-center mb-6">
+        <div class="w-16 h-16 gradient-orange rounded-2xl flex items-center justify-center mx-auto mb-3 payment-pulse shadow-xl shadow-primary-200">
+            <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
+            </svg>
+        </div>
+        <h1 class="text-xl font-extrabold text-gray-900">Selesaikan Pembayaran</h1>
+        <p class="text-gray-400 text-sm mt-1">Order #{{ order.order_number }}</p>
+    </div>
+
+    <!-- Timer -->
+    <div class="bg-red-50 border border-red-100 rounded-2xl p-4 mb-4 text-center">
+        <p class="text-xs text-red-500 font-semibold mb-1">⏱️ Batas Waktu Pembayaran</p>
+        <div class="countdown text-3xl font-extrabold text-red-600" x-text="timeLeft"></div>
+        <p class="text-xs text-red-400 mt-1">Pembayaran akan otomatis dibatalkan jika kadaluarsa</p>
+    </div>
+
+    <!-- Amount -->
+    <div class="bg-white rounded-3xl shadow-sm border border-gray-100 p-5 mb-4 text-center">
+        <p class="text-sm text-gray-400 mb-1">Total Pembayaran</p>
+        <p class="text-4xl font-extrabold text-gray-900">Rp {{ order.total|floatformat:0 }}</p>
+        <div class="mt-2 inline-flex items-center gap-1.5 bg-primary-50 text-primary-600 text-xs font-bold px-3 py-1.5 rounded-full">
+            <span>📱</span>
+            <span>{{ payment.get_payment_method_display }}</span>
+        </div>
+    </div>
+
+    {% if payment.payment_method == 'qris' %}
+    <!-- QRIS QR Code -->
+    <div class="bg-white rounded-3xl shadow-sm border border-gray-100 p-6 mb-4 text-center">
+        <p class="text-sm font-bold text-gray-700 mb-4">Scan QR Code ini dengan e-wallet kamu</p>
+        
+        <div class="qr-container inline-block">
+            <div class="bg-white p-4 rounded-2xl shadow-inner border border-gray-200">
+                <img src="data:image/png;base64,{{ qr_base64 }}" alt="QRIS" 
+                     class="w-52 h-52 mx-auto">
+            </div>
+        </div>
+
+        <div class="mt-4 flex items-center justify-center gap-3 text-xs text-gray-400">
+            <span>Didukung oleh:</span>
+            <div class="flex items-center gap-2">
+                <span class="bg-[#00AED6] text-white text-[10px] font-bold px-2 py-0.5 rounded-full">GoPay</span>
+                <span class="bg-[#4B2D8C] text-white text-[10px] font-bold px-2 py-0.5 rounded-full">OVO</span>
+                <span class="bg-[#118EEA] text-white text-[10px] font-bold px-2 py-0.5 rounded-full">DANA</span>
+                <span class="bg-[#EE4D2D] text-white text-[10px] font-bold px-2 py-0.5 rounded-full">SPay</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- How to Pay -->
+    <div class="bg-white rounded-3xl shadow-sm border border-gray-100 p-5 mb-4">
+        <h3 class="font-bold text-gray-800 mb-3">Cara Bayar via QRIS:</h3>
+        <div class="space-y-3">
+            {% for step, desc in steps %}
+            <div class="flex items-start gap-3">
+                <div class="w-6 h-6 gradient-orange rounded-full text-white text-xs font-bold flex items-center justify-center flex-shrink-0 mt-0.5">{{ forloop.counter }}</div>
+                <p class="text-sm text-gray-600">{{ desc }}</p>
+            </div>
+            {% empty %}
+            <div class="flex items-start gap-3">
+                <div class="w-6 h-6 gradient-orange rounded-full text-white text-xs font-bold flex items-center justify-center flex-shrink-0 mt-0.5">1</div>
+                <p class="text-sm text-gray-600">Buka aplikasi e-wallet favoritmu (GoPay, OVO, DANA, dll.)</p>
+            </div>
+            <div class="flex items-start gap-3">
+                <div class="w-6 h-6 gradient-orange rounded-full text-white text-xs font-bold flex items-center justify-center flex-shrink-0 mt-0.5">2</div>
+                <p class="text-sm text-gray-600">Pilih menu "Bayar" atau "Scan QR"</p>
+            </div>
+            <div class="flex items-start gap-3">
+                <div class="w-6 h-6 gradient-orange rounded-full text-white text-xs font-bold flex items-center justify-center flex-shrink-0 mt-0.5">3</div>
+                <p class="text-sm text-gray-600">Scan QR Code di atas dan konfirmasi pembayaran</p>
+            </div>
+            <div class="flex items-start gap-3">
+                <div class="w-6 h-6 gradient-orange rounded-full text-white text-xs font-bold flex items-center justify-center flex-shrink-0 mt-0.5">4</div>
+                <p class="text-sm text-gray-600">Klik tombol "Konfirmasi Pembayaran" di bawah</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    {% else %}
+    <!-- E-Wallet Payment Info -->
+    <div class="bg-white rounded-3xl shadow-sm border border-gray-100 p-5 mb-4">
+        <div class="text-center">
+            <div class="w-20 h-20 rounded-2xl mx-auto mb-3 flex items-center justify-center text-4xl
+                {% if payment.payment_method == 'gopay' %}bg-[#00AED6]
+                {% elif payment.payment_method == 'ovo' %}bg-[#4B2D8C]
+                {% elif payment.payment_method == 'dana' %}bg-[#118EEA]
+                {% elif payment.payment_method == 'shopeepay' %}bg-[#EE4D2D]
+                {% elif payment.payment_method == 'linkaja' %}bg-[#E82529]
+                {% endif %}">
+                <span class="text-white font-black text-xl">{{ payment.get_payment_method_display }}</span>
+            </div>
+            <p class="text-sm text-gray-600">Selesaikan pembayaran melalui aplikasi <strong>{{ payment.get_payment_method_display }}</strong> kamu</p>
+            
+            <div class="mt-4 bg-gray-50 rounded-2xl p-4">
+                <p class="text-xs text-gray-400 mb-1">Nomor Referensi</p>
+                <p class="font-bold text-gray-700 font-mono">{{ order.order_number }}</p>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Order Summary -->
+    <div class="bg-white rounded-3xl shadow-sm border border-gray-100 p-5 mb-4">
+        <h3 class="font-bold text-gray-800 mb-3">Detail Pesanan</h3>
+        <div class="space-y-2 mb-3">
+            {% for item in items %}
+            <div class="flex justify-between items-center text-sm">
+                <div>
+                    <span class="font-medium text-gray-700">{{ item.product.name }}</span>
+                    <span class="text-gray-400 text-xs"> x{{ item.quantity }}</span>
+                </div>
+                <span class="font-semibold text-gray-700">Rp {{ item.price|floatformat:0 }}</span>
+            </div>
+            {% endfor %}
+        </div>
+        <div class="border-t border-gray-100 pt-2 flex justify-between">
+            <span class="font-extrabold text-gray-800">Total</span>
+            <span class="font-extrabold text-primary-500">Rp {{ order.total|floatformat:0 }}</span>
+        </div>
+    </div>
+
+    <!-- Confirm Payment Button -->
+    <form method="post" action="{% url 'confirm_payment' order.id %}">
+        {% csrf_token %}
+        <button type="submit"
+                class="w-full py-4 gradient-orange text-white text-center font-extrabold rounded-2xl shadow-xl shadow-primary-200 text-base mb-3">
+            ✅ Konfirmasi Pembayaran
+        </button>
+    </form>
+
+    <button class="w-full py-3 text-gray-400 text-sm font-medium" onclick="window.location.href='{% url 'home' %}'">
+        Bayar Nanti
+    </button>
+</div>
+
+<script>
+function paymentTimer() {
+    return {
+        timeLeft: '14:59',
+        startTimer() {
+            let totalSeconds = 14 * 60 + 59;
+            const interval = setInterval(() => {
+                if (totalSeconds <= 0) {
+                    clearInterval(interval);
+                    this.timeLeft = '00:00';
+                    return;
+                }
+                totalSeconds--;
+                const minutes = Math.floor(totalSeconds / 60);
+                const seconds = totalSeconds % 60;
+                this.timeLeft = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+            }, 1000);
+        }
+    }
+}
+</script>
+{% endblock %}

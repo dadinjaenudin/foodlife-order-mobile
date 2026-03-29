@@ -1,0 +1,138 @@
+{% extends 'base.html' %}
+
+{% block title %}Cari - FoodCourt{% endblock %}
+
+{% block content %}
+<div class="px-4 pt-4">
+    <h1 class="text-xl font-extrabold text-gray-900 mb-4">Cari Menu & Tenant</h1>
+
+    <!-- Search Form -->
+    <form method="get" action="{% url 'search' %}" class="mb-5">
+        <div class="flex items-center bg-white rounded-2xl shadow-sm border-2 border-gray-200 focus-within:border-primary-400 transition-all overflow-hidden">
+            <div class="pl-4 text-gray-400">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                </svg>
+            </div>
+            <input type="text" name="q" value="{{ query }}"
+                   placeholder="Cari makanan, minuman, atau tenant..."
+                   autofocus
+                   class="flex-1 px-3 py-3.5 bg-transparent text-sm font-medium focus:outline-none">
+            {% if query %}
+            <a href="{% url 'search' %}" class="pr-3 text-gray-400 hover:text-gray-600">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </a>
+            {% endif %}
+            <button type="submit" class="px-4 py-3.5 gradient-orange text-white text-sm font-bold">
+                Cari
+            </button>
+        </div>
+    </form>
+
+    {% if query %}
+        <!-- Search Results -->
+        {% if tenants %}
+        <div class="mb-5">
+            <h2 class="text-sm font-bold text-gray-700 mb-3">🏪 Tenant ({{ tenants|length }})</h2>
+            <div class="space-y-3">
+                {% for tenant in tenants %}
+                <a href="{% url 'tenant_detail' tenant.slug %}" 
+                   class="flex items-center gap-3 bg-white rounded-2xl p-3 shadow-sm border border-gray-100 hover:shadow-md transition-all">
+                    <div class="w-14 h-14 rounded-xl overflow-hidden flex-shrink-0">
+                        {% if tenant.logo %}
+                        <img src="{{ tenant.logo.url }}" alt="{{ tenant.name }}" class="w-full h-full object-cover">
+                        {% else %}
+                        <div class="w-full h-full flex items-center justify-center text-2xl bg-primary-50">{{ tenant.category.icon }}</div>
+                        {% endif %}
+                    </div>
+                    <div class="flex-1">
+                        <h3 class="font-bold text-gray-800 text-sm">{{ tenant.name }}</h3>
+                        <p class="text-xs text-gray-400 line-clamp-1">{{ tenant.description }}</p>
+                        <div class="flex items-center gap-2 mt-1">
+                            <span class="text-xs text-yellow-500 font-bold">⭐ {{ tenant.rating }}</span>
+                            <span class="text-xs text-gray-400">·</span>
+                            <span class="text-xs text-gray-400">{{ tenant.delivery_time }}</span>
+                        </div>
+                    </div>
+                    <svg class="w-5 h-5 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                    </svg>
+                </a>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        {% if products %}
+        <div class="mb-5">
+            <h2 class="text-sm font-bold text-gray-700 mb-3">🍽️ Menu ({{ products|length }})</h2>
+            <div class="space-y-3">
+                {% for product in products %}
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-3 flex gap-3">
+                    <div class="w-20 h-20 rounded-xl overflow-hidden flex-shrink-0">
+                        {% if product.image %}
+                        <img src="{{ product.image.url }}" alt="{{ product.name }}" class="w-full h-full object-cover">
+                        {% else %}
+                        <div class="w-full h-full img-placeholder flex items-center justify-center text-3xl">🍽️</div>
+                        {% endif %}
+                    </div>
+                    <div class="flex-1">
+                        <h3 class="font-bold text-gray-800 text-sm">{{ product.name }}</h3>
+                        <a href="{% url 'tenant_detail' product.tenant.slug %}" class="text-xs text-primary-500 font-semibold">{{ product.tenant.name }}</a>
+                        <p class="text-xs text-gray-400 line-clamp-1 mt-0.5">{{ product.description }}</p>
+                        <div class="flex items-center justify-between mt-2">
+                            <p class="font-extrabold text-primary-500 text-sm">{{ product.formatted_price }}</p>
+                            <button hx-post="{% url 'add_to_cart' %}"
+                                    hx-vals='{"product_id": "{{ product.id }}", "quantity": "1"}'
+                                    hx-target="#search-cart-{{ product.id }}"
+                                    hx-swap="innerHTML"
+                                    class="px-3 py-1.5 gradient-orange text-white text-xs font-bold rounded-xl ripple transition-all">
+                                + Tambah
+                            </button>
+                            <div id="search-cart-{{ product.id }}" class="hidden"></div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        {% if not products and not tenants %}
+        <div class="text-center py-16">
+            <div class="text-5xl mb-3">😔</div>
+            <p class="font-bold text-gray-600">Tidak ditemukan: "{{ query }}"</p>
+            <p class="text-sm text-gray-400 mt-1">Coba kata kunci lain</p>
+        </div>
+        {% endif %}
+
+    {% else %}
+    <!-- Popular Searches -->
+    <div>
+        <h2 class="text-sm font-bold text-gray-700 mb-3">🔥 Populer</h2>
+        <div class="flex flex-wrap gap-2">
+            {% for keyword in popular_searches %}
+            <a href="?q={{ keyword }}" class="px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-600 hover:border-primary-300 hover:text-primary-500 transition-all">
+                {{ keyword }}
+            </a>
+            {% empty %}
+            {% for keyword in "Nasi Goreng,Ayam Bakar,Mie Ayam,Bakso,Soto,Es Teh,Juice,Kopi,Sate,Pizza" %}
+            {% endfor %}
+            <a href="?q=nasi goreng" class="px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-600">Nasi Goreng</a>
+            <a href="?q=ayam" class="px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-600">Ayam</a>
+            <a href="?q=mie" class="px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-600">Mie</a>
+            <a href="?q=bakso" class="px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-600">Bakso</a>
+            <a href="?q=soto" class="px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-600">Soto</a>
+            <a href="?q=kopi" class="px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-600">Kopi</a>
+            <a href="?q=juice" class="px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-600">Juice</a>
+            <a href="?q=pizza" class="px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-600">Pizza</a>
+            <a href="?q=sate" class="px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-600">Sate</a>
+            <a href="?q=es" class="px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-600">Es Drink</a>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

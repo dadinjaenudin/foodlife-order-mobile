@@ -1,0 +1,38 @@
+{% for tenant_id, tenant_data in tenants_in_cart.items %}
+<div class="bg-white rounded-3xl shadow-sm border border-gray-100 mb-4 overflow-hidden">
+    <div class="px-4 py-3 bg-gray-50 border-b border-gray-100 flex items-center gap-2">
+        <span class="text-lg">🏪</span>
+        <h3 class="font-bold text-gray-700 text-sm">{{ tenant_data.tenant_name }}</h3>
+    </div>
+    <div class="divide-y divide-gray-50">
+        {% for item in tenant_data.items %}
+        <div class="p-4 flex items-center gap-3">
+            <div class="w-16 h-16 rounded-xl overflow-hidden flex-shrink-0 bg-gray-100">
+                {% if item.image %}
+                <img src="{{ item.image }}" alt="{{ item.product_name }}" class="w-full h-full object-cover">
+                {% else %}
+                <div class="w-full h-full flex items-center justify-center text-2xl img-placeholder">🍽️</div>
+                {% endif %}
+            </div>
+            <div class="flex-1">
+                <h4 class="font-bold text-gray-800 text-sm">{{ item.product_name }}</h4>
+                <p class="text-primary-500 font-bold text-sm">Rp {{ item.price|floatformat:0 }}</p>
+                <div class="flex items-center gap-2 mt-2">
+                    <button hx-post="{% url 'update_cart' %}"
+                            hx-vals='{"product_id": "{{ item.product_id }}", "action": "decrease"}'
+                            hx-target="#cart-container"
+                            hx-swap="outerHTML"
+                            class="w-7 h-7 bg-gray-100 rounded-lg flex items-center justify-center font-bold">-</button>
+                    <span class="font-bold text-gray-800 text-sm">{{ item.quantity }}</span>
+                    <button hx-post="{% url 'update_cart' %}"
+                            hx-vals='{"product_id": "{{ item.product_id }}", "action": "increase"}'
+                            hx-target="#cart-container"
+                            hx-swap="outerHTML"
+                            class="w-7 h-7 gradient-orange rounded-lg flex items-center justify-center text-white font-bold">+</button>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endfor %}
