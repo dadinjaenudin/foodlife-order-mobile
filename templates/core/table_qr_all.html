@@ -1,0 +1,153 @@
+{% extends 'base.html' %}
+
+{% block title %}QR Code Semua Meja - FoodCourt Admin{% endblock %}
+
+{% block extra_head %}
+<style>
+    @media print {
+        header, nav, .no-print { display: none !important; }
+        .content-area { padding-bottom: 0 !important; }
+        .qr-card { break-inside: avoid; page-break-inside: avoid; }
+        body { background: white !important; }
+    }
+    .qr-card {
+        transition: transform 0.15s ease;
+    }
+    .qr-card:hover { transform: translateY(-2px); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="px-4 pt-4 pb-6">
+
+    <!-- Header -->
+    <div class="flex items-center gap-3 mb-2">
+        <a href="/admin/core/table/" class="w-9 h-9 bg-gray-100 rounded-xl flex items-center justify-center no-print">
+            <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+            </svg>
+        </a>
+        <div class="flex-1">
+            <h1 class="text-xl font-extrabold text-gray-900">QR Code Semua Meja</h1>
+            <p class="text-xs text-gray-400">Scan untuk mulai order dari meja</p>
+        </div>
+        <button onclick="window.print()"
+                class="no-print flex items-center gap-2 px-4 py-2.5 gradient-orange text-white text-xs font-bold rounded-xl shadow-md">
+            🖨️ Print
+        </button>
+    </div>
+
+    <!-- Stats bar -->
+    <div class="flex gap-3 mb-5 overflow-x-auto category-nav no-print">
+        {% for zone in zones %}
+        <div class="flex-shrink-0 bg-white border border-gray-200 rounded-2xl px-4 py-2.5 text-center shadow-sm">
+            <p class="text-lg">{{ zone.icon }}</p>
+            <p class="text-[10px] font-bold text-gray-500 mt-0.5">{{ zone.name }}</p>
+            <p class="text-sm font-extrabold text-gray-800">{{ zone.all_tables.count }} meja</p>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Info banner -->
+    <div class="bg-blue-50 border border-blue-200 rounded-2xl p-3.5 mb-5 flex items-start gap-3 no-print">
+        <div class="text-2xl flex-shrink-0">💡</div>
+        <div>
+            <p class="text-sm font-bold text-blue-800">Cara pakai QR Meja:</p>
+            <ol class="text-xs text-blue-700 mt-1 space-y-0.5 list-decimal list-inside">
+                <li>Print halaman ini (klik tombol 🖨️ Print)</li>
+                <li>Potong setiap kartu QR per meja</li>
+                <li>Tempel di masing-masing meja</li>
+                <li>Pelanggan scan QR → langsung buka menu & order</li>
+            </ol>
+        </div>
+    </div>
+
+    <!-- QR Cards per Zone -->
+    {% for zone in zones %}
+    <div class="mb-8">
+        <!-- Zone Title -->
+        <div class="flex items-center gap-2 mb-4 sticky top-0 bg-gray-50 py-2 z-10 no-print">
+            <span class="text-2xl">{{ zone.icon }}</span>
+            <div>
+                <h2 class="font-extrabold text-gray-800">{{ zone.name }}</h2>
+                <p class="text-xs text-gray-400">{{ zone.description }}</p>
+            </div>
+            <span class="ml-auto text-xs bg-gray-200 text-gray-600 font-bold px-3 py-1 rounded-full">
+                {{ zone.all_tables.count }} meja
+            </span>
+        </div>
+
+        <!-- QR Grid -->
+        <div class="grid grid-cols-2 gap-3">
+            {% for table in zone.all_tables %}
+            <div class="qr-card bg-white border-2 border-gray-100 rounded-3xl p-4 shadow-sm flex flex-col items-center text-center">
+
+                <!-- Header label -->
+                <div class="w-full bg-gray-900 rounded-2xl px-3 py-2 mb-3">
+                    <p class="text-white font-black text-xs uppercase tracking-widest">🍜 FoodCourt</p>
+                </div>
+
+                <!-- Zone + Table name -->
+                <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wide">{{ zone.name }}</p>
+                <p class="text-2xl font-black text-gray-900 leading-tight mb-1">{{ table.display_name }}</p>
+
+                <!-- Capacity pill -->
+                <span class="text-[10px] font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full mb-3">
+                    {{ table.capacity_icon }} {{ table.get_capacity_display }}
+                </span>
+
+                <!-- QR Code -->
+                <div class="relative mb-3">
+                    {% if table.qr_code %}
+                    <div class="w-32 h-32 bg-white border-4 border-gray-900 rounded-2xl overflow-hidden flex items-center justify-center p-1">
+                        <img src="{{ table.qr_code.url }}" alt="QR {{ table.display_name }}"
+                             class="w-full h-full object-contain">
+                    </div>
+                    {% else %}
+                    <div class="w-32 h-32 bg-gray-100 border-4 border-gray-300 rounded-2xl flex items-center justify-center">
+                        <p class="text-gray-400 text-xs font-bold">No QR</p>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- Instruction -->
+                <p class="text-[10px] text-gray-400 font-medium mb-3 leading-snug">Scan untuk memesan<br>langsung dari meja ini</p>
+
+                <!-- Status badge -->
+                <div class="flex items-center gap-1.5">
+                    <span class="w-2 h-2 rounded-full flex-shrink-0
+                                 {% if table.status == 'available' %}bg-green-400
+                                 {% elif table.status == 'occupied' %}bg-red-400
+                                 {% elif table.status == 'reserved' %}bg-yellow-400
+                                 {% else %}bg-gray-300{% endif %}"></span>
+                    <span class="text-[10px] font-bold
+                                 {% if table.status == 'available' %}text-green-600
+                                 {% elif table.status == 'occupied' %}text-red-500
+                                 {% elif table.status == 'reserved' %}text-yellow-600
+                                 {% else %}text-gray-400{% endif %}">
+                        {{ table.get_status_display }}
+                    </span>
+                </div>
+
+                <!-- Download button (no-print) -->
+                <a href="{% url 'table_qr_download' table.id %}"
+                   class="no-print mt-2 flex items-center gap-1.5 text-[10px] text-primary-500 font-bold hover:underline">
+                    ⬇️ Download PNG
+                </a>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% empty %}
+    <div class="text-center py-16">
+        <div class="text-6xl mb-4">🪑</div>
+        <h3 class="text-xl font-bold text-gray-700 mb-2">Belum Ada Meja</h3>
+        <p class="text-gray-400 text-sm mb-4">Jalankan: <code class="bg-gray-100 px-2 py-0.5 rounded font-mono text-xs">python manage.py seed_tables</code></p>
+        <a href="/admin/core/table/add/" class="px-6 py-3 gradient-orange text-white font-bold rounded-2xl text-sm shadow-lg">
+            + Tambah Meja Manual
+        </a>
+    </div>
+    {% endfor %}
+
+</div>
+{% endblock %}

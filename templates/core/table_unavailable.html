@@ -1,0 +1,12 @@
+{% extends 'base.html' %}
+{% block title %}Meja Tidak Tersedia{% endblock %}
+{% block content %}
+<div class="px-4 pt-16 text-center">
+    <div class="text-6xl mb-4">🚫</div>
+    <h1 class="text-xl font-extrabold text-gray-900 mb-2">{{ table.display_name }} Tidak Tersedia</h1>
+    <p class="text-gray-500 text-sm mb-6">Meja ini sedang tidak dapat digunakan. Silakan pilih meja lain.</p>
+    <a href="{% url 'table_select' %}" class="inline-block px-8 py-3.5 gradient-orange text-white font-bold rounded-2xl shadow-lg">
+        Pilih Meja Lain
+    </a>
+</div>
+{% endblock %}

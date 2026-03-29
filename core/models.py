@@ -1,6 +1,9 @@
 from django.db import models
 from django.utils import timezone
 import uuid
+import qrcode
+from io import BytesIO
+from django.core.files.base import ContentFile
 
 
 class Category(models.Model):
@@ -12,6 +15,107 @@ class Category(models.Model):
 
     def __str__(self):
         return self.name
+
+
+class Zone(models.Model):
+    """Zona/area di foodcourt: Lantai 1, Lantai 2, Outdoor, dll."""
+    name = models.CharField(max_length=100)
+    description = models.CharField(max_length=200, blank=True)
+    icon = models.CharField(max_length=10, default='🏢')
+    color = models.CharField(max_length=20, default='blue')
+    order = models.IntegerField(default=0)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ['order', 'name']
+
+    def __str__(self):
+        return self.name
+
+    def available_tables(self):
+        return self.tables.filter(is_active=True, status='available')
+
+    def all_tables(self):
+        return self.tables.filter(is_active=True)
+
+
+class Table(models.Model):
+    STATUS_CHOICES = [
+        ('available', 'Tersedia'),
+        ('occupied', 'Terisi'),
+        ('reserved', 'Dipesan'),
+        ('unavailable', 'Tidak Tersedia'),
+    ]
+    CAPACITY_CHOICES = [(i, f'{i} orang') for i in range(1, 13)]
+
+    zone = models.ForeignKey(Zone, on_delete=models.CASCADE, related_name='tables')
+    number = models.CharField(max_length=10)          # e.g. "A1", "B3", "12"
+    display_name = models.CharField(max_length=50)    # e.g. "Meja A1"
+    capacity = models.IntegerField(choices=CAPACITY_CHOICES, default=4)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='available')
+    is_active = models.BooleanField(default=True)
+    qr_code = models.ImageField(upload_to='tables/qr/', blank=True, null=True)
+    qr_token = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    notes = models.CharField(max_length=200, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['zone', 'number']
+        unique_together = ['zone', 'number']
+
+    def __str__(self):
+        return f"{self.zone.name} - {self.display_name}"
+
+    def get_qr_url(self):
+        """URL yang akan di-encode di QR code"""
+        return f"/table/scan/{self.qr_token}/"
+
+    def generate_qr_code(self):
+        """Generate dan simpan QR code image"""
+        qr_data = f"FOODCOURT|TABLE|{self.qr_token}|{self.number}"
+        qr = qrcode.QRCode(
+            version=2,
+            error_correction=qrcode.constants.ERROR_CORRECT_M,
+            box_size=10,
+            border=4,
+        )
+        qr.add_data(qr_data)
+        qr.make(fit=True)
+        img = qr.make_image(fill_color="#1f2937", back_color="white")
+
+        buffer = BytesIO()
+        img.save(buffer, format='PNG')
+        buffer.seek(0)
+
+        filename = f"table_qr_{self.zone.name.lower().replace(' ', '_')}_{self.number}.png"
+        self.qr_code.save(filename, ContentFile(buffer.read()), save=False)
+
+    def save(self, *args, **kwargs):
+        is_new = not self.pk
+        super().save(*args, **kwargs)
+        if is_new or not self.qr_code:
+            self.generate_qr_code()
+            super().save(update_fields=['qr_code'])
+
+    @property
+    def status_color(self):
+        return {
+            'available': 'green',
+            'occupied': 'red',
+            'reserved': 'yellow',
+            'unavailable': 'gray',
+        }.get(self.status, 'gray')
+
+    @property
+    def capacity_icon(self):
+        if self.capacity <= 2:
+            return '👥'
+        elif self.capacity <= 4:
+            return '👨‍👩‍👧‍👦'
+        elif self.capacity <= 6:
+            return '🪑'
+        else:
+            return '🏟️'
 
 
 class Tenant(models.Model):
@@ -72,6 +176,11 @@ class Product(models.Model):
 
 
 class Order(models.Model):
+    ORDER_TYPE_CHOICES = [
+        ('dine_in', 'Dine In'),
+        ('pickup', 'Ambil Sendiri'),
+    ]
+
     STATUS_CHOICES = [
         ('pending', 'Menunggu Pembayaran'),
         ('paid', 'Sudah Dibayar'),
@@ -86,7 +195,12 @@ class Order(models.Model):
     customer_name = models.CharField(max_length=200)
     customer_phone = models.CharField(max_length=20)
     customer_email = models.CharField(max_length=200, blank=True)
-    table_number = models.CharField(max_length=10, blank=True)
+
+    # Table / Order type
+    order_type = models.CharField(max_length=20, choices=ORDER_TYPE_CHOICES, default='dine_in')
+    table = models.ForeignKey(Table, on_delete=models.SET_NULL, null=True, blank=True, related_name='orders')
+    table_number = models.CharField(max_length=20, blank=True)  # denormalized for display
+
     notes = models.TextField(blank=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
     subtotal = models.DecimalField(max_digits=12, decimal_places=0, default=0)
@@ -101,7 +215,22 @@ class Order(models.Model):
     def save(self, *args, **kwargs):
         if not self.order_number:
             self.order_number = f"FC{timezone.now().strftime('%Y%m%d%H%M%S')}"
+        # Denormalize table number for easy display
+        if self.table and not self.table_number:
+            self.table_number = self.table.display_name
         super().save(*args, **kwargs)
+
+    @property
+    def order_type_display_icon(self):
+        return '🪑' if self.order_type == 'dine_in' else '🛍️'
+
+    @property
+    def location_display(self):
+        if self.order_type == 'dine_in' and self.table:
+            return f"{self.table.zone.name} · {self.table.display_name}"
+        elif self.order_type == 'pickup':
+            return 'Ambil di Kasir / Counter'
+        return self.table_number or '-'
 
 
 class OrderItem(models.Model):

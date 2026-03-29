@@ -203,28 +203,61 @@
 
     <!-- Header -->
     <header class="sticky top-0 z-50 bg-white shadow-sm border-b border-gray-100">
-        <div class="max-w-lg mx-auto px-4 py-3 flex items-center justify-between">
+        <div class="max-w-lg mx-auto px-4 py-3 flex items-center justify-between gap-2">
             <!-- Logo -->
-            <a href="{% url 'home' %}" class="flex items-center gap-2">
+            <a href="{% url 'home' %}" class="flex items-center gap-2 flex-shrink-0">
                 <div class="w-9 h-9 gradient-orange rounded-xl flex items-center justify-center shadow-lg">
                     <span class="text-white text-lg">🍜</span>
                 </div>
-                <div>
+                <div class="hidden xs:block">
                     <span class="font-extrabold text-gray-900 text-lg leading-none">Food</span><span class="font-extrabold text-primary-500 text-lg leading-none">Court</span>
                     <div class="text-xs text-gray-400 font-normal leading-none">Pesan Sekarang</div>
                 </div>
             </a>
 
+            <!-- Table / Location Pill (center) -->
+            <a href="{% url 'table_select' %}?next={{ request.path }}"
+               class="flex-1 mx-1 flex items-center gap-2 px-3 py-2 rounded-xl border transition-all min-w-0
+                      {% if table_session.order_type %}border-primary-200 bg-primary-50 hover:bg-primary-100{% else %}border-dashed border-gray-300 bg-gray-50 hover:border-primary-300{% endif %}">
+                {% if table_session.order_type == 'dine_in' %}
+                    <span class="text-base flex-shrink-0">🪑</span>
+                    <div class="min-w-0 flex-1">
+                        <p class="text-[10px] text-primary-600 font-bold uppercase leading-none truncate">{{ table_session.zone_name }}</p>
+                        <p class="text-sm font-extrabold text-gray-800 leading-tight truncate">{{ table_session.table_display }}</p>
+                    </div>
+                    <svg class="w-3.5 h-3.5 text-primary-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                    </svg>
+                {% elif table_session.order_type == 'pickup' %}
+                    <span class="text-base flex-shrink-0">🛍️</span>
+                    <div class="min-w-0 flex-1">
+                        <p class="text-[10px] text-primary-600 font-bold uppercase leading-none">Mode</p>
+                        <p class="text-sm font-extrabold text-gray-800 leading-tight">Pickup</p>
+                    </div>
+                    <svg class="w-3.5 h-3.5 text-primary-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                    </svg>
+                {% else %}
+                    <span class="text-base flex-shrink-0">📍</span>
+                    <div class="min-w-0 flex-1">
+                        <p class="text-xs text-gray-500 font-semibold leading-tight truncate">Pilih Meja / Pickup</p>
+                        <p class="text-[10px] text-gray-400 leading-none">Tap untuk memilih</p>
+                    </div>
+                    <svg class="w-3.5 h-3.5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                    </svg>
+                {% endif %}
+            </a>
+
             <!-- Right Actions -->
-            <div class="flex items-center gap-2">
-                <!-- Search Button -->
+            <div class="flex items-center gap-2 flex-shrink-0">
+                <!-- Search -->
                 <a href="{% url 'search' %}" class="w-9 h-9 flex items-center justify-center rounded-xl bg-gray-100 hover:bg-gray-200 transition-all">
                     <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
                     </svg>
                 </a>
-
-                <!-- Cart Button -->
+                <!-- Cart -->
                 <a href="{% url 'cart' %}" class="relative w-9 h-9 flex items-center justify-center rounded-xl bg-primary-500 hover:bg-primary-600 transition-all shadow-md">
                     <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path>
@@ -232,11 +265,21 @@
                     {% if cart_count > 0 %}
                     <span id="cart-count" class="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center animate-bounce-in">{{ cart_count }}</span>
                     {% else %}
-                    <span id="cart-count" class="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full {% if cart_count == 0 %}hidden{% endif %} items-center justify-center">{{ cart_count }}</span>
+                    <span id="cart-count" class="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full hidden items-center justify-center">0</span>
                     {% endif %}
                 </a>
             </div>
         </div>
+
+        <!-- Table Not Selected Warning bar -->
+        {% if not table_session.order_type and request.resolver_match.url_name not in 'table_select,table_scan,table_choose' %}
+        <div class="bg-amber-50 border-t border-amber-200 px-4 py-2 flex items-center gap-2">
+            <svg class="w-4 h-4 text-amber-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+            </svg>
+            <p class="text-xs text-amber-700 font-medium flex-1">Belum pilih meja. <a href="{% url 'table_select' %}?next={{ request.path }}" class="font-extrabold underline">Pilih sekarang →</a></p>
+        </div>
+        {% endif %}
     </header>
 
     <!-- Main Content -->
@@ -257,21 +300,34 @@
     <!-- Bottom Navigation -->
     <nav class="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200 bottom-nav shadow-lg">
         <div class="max-w-lg mx-auto px-2 py-2 flex items-center justify-around">
-            <a href="{% url 'home' %}" class="flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl {% if request.resolver_match.url_name == 'home' %}text-primary-500{% else %}text-gray-400 hover:text-gray-600{% endif %} transition-all">
+
+            <!-- Beranda -->
+            <a href="{% url 'home' %}" class="flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl transition-all {% if request.resolver_match.url_name == 'home' %}text-primary-500{% else %}text-gray-400{% endif %}">
                 <svg class="w-6 h-6" fill="{% if request.resolver_match.url_name == 'home' %}currentColor{% else %}none{% endif %}" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
                 </svg>
                 <span class="text-xs font-semibold">Beranda</span>
             </a>
 
-            <a href="{% url 'search' %}" class="flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl {% if request.resolver_match.url_name == 'search' %}text-primary-500{% else %}text-gray-400 hover:text-gray-600{% endif %} transition-all">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+            <!-- Meja tab — highlighted when no table chosen -->
+            <a href="{% url 'table_select' %}?next={{ request.path }}"
+               class="flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl transition-all relative
+                      {% if request.resolver_match.url_name == 'table_select' %}text-primary-500
+                      {% elif not table_session.order_type %}text-amber-500
+                      {% else %}text-gray-400{% endif %}">
+                <svg class="w-6 h-6" fill="{% if request.resolver_match.url_name == 'table_select' %}currentColor{% else %}none{% endif %}" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 14h18M10 10V6m4 4V6M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z"/>
                 </svg>
-                <span class="text-xs font-semibold">Cari</span>
+                {% if not table_session.order_type %}
+                <span class="absolute top-0.5 right-0.5 w-2.5 h-2.5 bg-amber-400 rounded-full border-2 border-white"></span>
+                {% elif table_session.order_type == 'dine_in' %}
+                <span class="absolute top-0.5 right-0.5 w-2.5 h-2.5 bg-green-400 rounded-full border-2 border-white"></span>
+                {% endif %}
+                <span class="text-xs font-semibold">Meja</span>
             </a>
 
-            <a href="{% url 'cart' %}" class="flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl {% if request.resolver_match.url_name == 'cart' %}text-primary-500{% else %}text-gray-400 hover:text-gray-600{% endif %} transition-all relative">
+            <!-- Keranjang -->
+            <a href="{% url 'cart' %}" class="flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl transition-all relative {% if request.resolver_match.url_name == 'cart' %}text-primary-500{% else %}text-gray-400{% endif %}">
                 <svg class="w-6 h-6" fill="{% if request.resolver_match.url_name == 'cart' %}currentColor{% else %}none{% endif %}" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path>
                 </svg>
@@ -281,12 +337,13 @@
                 <span class="text-xs font-semibold">Keranjang</span>
             </a>
 
-            <a href="#" class="flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl text-gray-400 hover:text-gray-600 transition-all" onclick="showTrackOrder()">
+            <!-- Track Order -->
+            <button onclick="showTrackOrder()" class="flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl text-gray-400 transition-all">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path>
                 </svg>
                 <span class="text-xs font-semibold">Pesanan</span>
-            </a>
+            </button>
         </div>
     </nav>
 

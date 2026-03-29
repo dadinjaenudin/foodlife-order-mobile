@@ -13,30 +13,108 @@
         </a>
         <div>
             <h1 class="text-xl font-extrabold text-gray-900">Checkout</h1>
-            <p class="text-xs text-gray-400">Isi data pemesanan</p>
+            <p class="text-xs text-gray-400">Konfirmasi pesanan & pembayaran</p>
         </div>
     </div>
 
+    {% if not table_session.order_type %}
+    <!-- ⚠️ GATE: Must choose table first -->
+    <div class="bg-amber-50 border-2 border-amber-300 rounded-3xl p-5 mb-5">
+        <div class="flex items-start gap-3 mb-4">
+            <div class="w-12 h-12 bg-amber-100 rounded-2xl flex items-center justify-center text-2xl flex-shrink-0">⚠️</div>
+            <div>
+                <p class="font-extrabold text-amber-800 text-base">Pilih Meja Dulu!</p>
+                <p class="text-sm text-amber-700 mt-0.5">Kamu harus pilih meja atau mode pickup sebelum checkout. Ini adalah sistem dine-in.</p>
+            </div>
+        </div>
+        <a href="{% url 'table_select' %}?next=/checkout/"
+           class="w-full flex items-center justify-center gap-2 py-3.5 gradient-orange text-white font-bold rounded-2xl shadow-lg">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 14h18M10 10V6m4 4V6M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z"/>
+            </svg>
+            Pilih Meja Sekarang
+        </a>
+    </div>
+    {% endif %}
+
     <form method="post" action="{% url 'checkout' %}" x-data="{ paymentMethod: 'qris' }">
         {% csrf_token %}
-        
-        <!-- Customer Info -->
+
+        <!-- ═══ STEP 1: LOKASI MEJA ═══ -->
+        <div class="bg-white rounded-3xl shadow-sm border {% if table_session.order_type %}border-green-200{% else %}border-red-200{% endif %} p-5 mb-4">
+            <h2 class="font-bold text-gray-800 mb-3 flex items-center gap-2">
+                <div class="w-7 h-7 gradient-orange rounded-lg flex items-center justify-center text-white text-xs font-bold">1</div>
+                Lokasi / Meja
+                {% if table_session.order_type %}
+                <span class="ml-auto text-xs bg-green-100 text-green-700 font-bold px-2 py-0.5 rounded-full">✅ Terpilih</span>
+                {% else %}
+                <span class="ml-auto text-xs bg-red-100 text-red-700 font-bold px-2 py-0.5 rounded-full">⚠️ Wajib</span>
+                {% endif %}
+            </h2>
+
+            {% if table_session.order_type == 'dine_in' %}
+            <!-- Dine-in: meja terpilih -->
+            <div class="flex items-center gap-3 bg-green-50 border border-green-200 rounded-2xl p-3.5">
+                <div class="w-12 h-12 bg-green-500 rounded-xl flex items-center justify-center text-2xl flex-shrink-0">🪑</div>
+                <div class="flex-1 min-w-0">
+                    <p class="text-[10px] font-bold text-green-600 uppercase tracking-wide">{{ table_session.zone_name }}</p>
+                    <p class="font-extrabold text-gray-800 text-lg leading-tight">{{ table_session.table_display }}</p>
+                    <p class="text-xs text-green-600 font-medium">Dine In · Makan di Tempat</p>
+                </div>
+                <a href="{% url 'table_select' %}?next=/checkout/"
+                   class="flex-shrink-0 px-3 py-2 bg-white border border-green-300 text-green-700 text-xs font-bold rounded-xl">
+                    Ganti
+                </a>
+            </div>
+
+            {% elif table_session.order_type == 'pickup' %}
+            <!-- Pickup mode -->
+            <div class="flex items-center gap-3 bg-purple-50 border border-purple-200 rounded-2xl p-3.5">
+                <div class="w-12 h-12 bg-purple-500 rounded-xl flex items-center justify-center text-2xl flex-shrink-0">🛍️</div>
+                <div class="flex-1 min-w-0">
+                    <p class="text-[10px] font-bold text-purple-600 uppercase tracking-wide">Mode Pickup</p>
+                    <p class="font-extrabold text-gray-800 text-base leading-tight">Ambil di Kasir / Counter</p>
+                    <p class="text-xs text-purple-600 font-medium">Setelah pesanan siap, ambil sendiri</p>
+                </div>
+                <a href="{% url 'table_select' %}?next=/checkout/"
+                   class="flex-shrink-0 px-3 py-2 bg-white border border-purple-300 text-purple-700 text-xs font-bold rounded-xl">
+                    Ganti
+                </a>
+            </div>
+
+            {% else %}
+            <!-- Belum pilih meja -->
+            <a href="{% url 'table_select' %}?next=/checkout/"
+               class="flex items-center gap-3 border-2 border-dashed border-amber-300 bg-amber-50 rounded-2xl p-4 transition-all hover:border-amber-400 hover:bg-amber-100 group">
+                <div class="w-12 h-12 bg-amber-100 rounded-xl flex items-center justify-center text-2xl flex-shrink-0">📍</div>
+                <div class="flex-1">
+                    <p class="font-bold text-amber-800">Belum pilih meja</p>
+                    <p class="text-xs text-amber-600">Tap di sini untuk pilih meja atau pickup →</p>
+                </div>
+                <svg class="w-5 h-5 text-amber-400 group-hover:translate-x-1 transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                </svg>
+            </a>
+            {% endif %}
+        </div>
+
+        <!-- ═══ STEP 2: INFO PEMESAN ═══ -->
         <div class="bg-white rounded-3xl shadow-sm border border-gray-100 p-5 mb-4">
             <h2 class="font-bold text-gray-800 mb-4 flex items-center gap-2">
-                <div class="w-7 h-7 gradient-orange rounded-lg flex items-center justify-center text-white text-xs font-bold">1</div>
+                <div class="w-7 h-7 gradient-orange rounded-lg flex items-center justify-center text-white text-xs font-bold">2</div>
                 Informasi Pemesan
             </h2>
             <div class="space-y-3">
                 <div>
-                    <label class="block text-xs font-semibold text-gray-500 mb-1.5">Nama Lengkap *</label>
+                    <label class="block text-xs font-semibold text-gray-500 mb-1.5">Nama Lengkap <span class="text-red-400">*</span></label>
                     <input type="text" name="customer_name" required
                            placeholder="Masukkan nama kamu"
                            class="w-full px-4 py-3.5 border-2 border-gray-200 rounded-2xl text-sm font-medium focus:outline-none focus:border-primary-400 transition-all">
                 </div>
                 <div>
-                    <label class="block text-xs font-semibold text-gray-500 mb-1.5">Nomor HP *</label>
+                    <label class="block text-xs font-semibold text-gray-500 mb-1.5">Nomor HP <span class="text-red-400">*</span></label>
                     <div class="flex gap-2">
-                        <div class="px-3 py-3.5 border-2 border-gray-200 rounded-2xl text-sm font-medium text-gray-500 bg-gray-50">🇮🇩 +62</div>
+                        <div class="px-3 py-3.5 border-2 border-gray-200 rounded-2xl text-sm font-medium text-gray-500 bg-gray-50 flex-shrink-0">🇮🇩 +62</div>
                         <input type="tel" name="customer_phone" required
                                placeholder="8xxxxxxxxxx"
                                class="flex-1 px-4 py-3.5 border-2 border-gray-200 rounded-2xl text-sm font-medium focus:outline-none focus:border-primary-400 transition-all">
@@ -49,34 +127,28 @@
                            class="w-full px-4 py-3.5 border-2 border-gray-200 rounded-2xl text-sm font-medium focus:outline-none focus:border-primary-400 transition-all">
                 </div>
                 <div>
-                    <label class="block text-xs font-semibold text-gray-500 mb-1.5">Nomor Meja (opsional)</label>
-                    <input type="text" name="table_number"
-                           placeholder="Contoh: A1, 12, dst."
-                           class="w-full px-4 py-3.5 border-2 border-gray-200 rounded-2xl text-sm font-medium focus:outline-none focus:border-primary-400 transition-all">
-                </div>
-                <div>
-                    <label class="block text-xs font-semibold text-gray-500 mb-1.5">Catatan (opsional)</label>
+                    <label class="block text-xs font-semibold text-gray-500 mb-1.5">Catatan Tambahan</label>
                     <textarea name="notes" rows="2"
-                              placeholder="Contoh: tidak pakai pedas, dll."
+                              placeholder="Contoh: tidak pakai pedas, alergi kacang, dll."
                               class="w-full px-4 py-3.5 border-2 border-gray-200 rounded-2xl text-sm font-medium focus:outline-none focus:border-primary-400 transition-all resize-none"></textarea>
                 </div>
             </div>
         </div>
 
-        <!-- Order Summary -->
+        <!-- ═══ STEP 3: RINGKASAN PESANAN ═══ -->
         <div class="bg-white rounded-3xl shadow-sm border border-gray-100 p-5 mb-4">
             <h2 class="font-bold text-gray-800 mb-4 flex items-center gap-2">
-                <div class="w-7 h-7 gradient-orange rounded-lg flex items-center justify-center text-white text-xs font-bold">2</div>
+                <div class="w-7 h-7 gradient-orange rounded-lg flex items-center justify-center text-white text-xs font-bold">3</div>
                 Ringkasan Pesanan
             </h2>
-            <div class="space-y-2.5 max-h-48 overflow-y-auto">
+            <div class="space-y-2.5 max-h-52 overflow-y-auto">
                 {% for key, item in cart.items %}
-                <div class="flex items-center justify-between gap-3 py-1">
-                    <div class="flex items-center gap-2">
-                        <span class="w-5 h-5 bg-primary-100 text-primary-600 text-xs font-bold rounded-lg flex items-center justify-center">{{ item.quantity }}</span>
+                <div class="flex items-center justify-between gap-3 py-1.5 border-b border-gray-50 last:border-0">
+                    <div class="flex items-center gap-2.5">
+                        <span class="w-6 h-6 bg-primary-100 text-primary-600 text-xs font-bold rounded-lg flex items-center justify-center flex-shrink-0">{{ item.quantity }}</span>
                         <div>
-                            <p class="text-sm font-medium text-gray-700 leading-tight">{{ item.product_name }}</p>
-                            <p class="text-xs text-gray-400">{{ item.tenant_name }}</p>
+                            <p class="text-sm font-semibold text-gray-800 leading-tight">{{ item.product_name }}</p>
+                            <p class="text-[10px] text-gray-400 font-medium">{{ item.tenant_name }}</p>
                         </div>
                     </div>
                     <span class="text-sm font-bold text-gray-700 flex-shrink-0">
@@ -85,7 +157,7 @@
                 </div>
                 {% endfor %}
             </div>
-            <div class="border-t border-gray-100 mt-3 pt-3 space-y-1.5">
+            <div class="border-t border-gray-100 mt-3 pt-3 space-y-2">
                 <div class="flex justify-between text-sm">
                     <span class="text-gray-500">Subtotal</span>
                     <span class="font-semibold">Rp {{ subtotal|floatformat:0 }}</span>
@@ -94,33 +166,31 @@
                     <span class="text-gray-500">Biaya Layanan</span>
                     <span class="font-semibold">Rp {{ service_fee|floatformat:0 }}</span>
                 </div>
-                <div class="flex justify-between pt-1 border-t border-gray-100">
-                    <span class="font-extrabold text-gray-800">Total</span>
-                    <span class="font-extrabold text-primary-500 text-lg">Rp {{ total|floatformat:0 }}</span>
+                <div class="flex justify-between pt-2 border-t border-gray-100">
+                    <span class="font-extrabold text-gray-800">Total Bayar</span>
+                    <span class="font-extrabold text-primary-500 text-xl">Rp {{ total|floatformat:0 }}</span>
                 </div>
             </div>
         </div>
 
-        <!-- Payment Method -->
+        <!-- ═══ STEP 4: METODE PEMBAYARAN ═══ -->
         <div class="bg-white rounded-3xl shadow-sm border border-gray-100 p-5 mb-6">
             <h2 class="font-bold text-gray-800 mb-4 flex items-center gap-2">
-                <div class="w-7 h-7 gradient-orange rounded-lg flex items-center justify-center text-white text-xs font-bold">3</div>
+                <div class="w-7 h-7 gradient-orange rounded-lg flex items-center justify-center text-white text-xs font-bold">4</div>
                 Metode Pembayaran
             </h2>
 
-            <!-- QRIS -->
-            <div class="space-y-3">
+            <div class="space-y-2.5">
+                <!-- QRIS -->
                 <label class="flex items-center gap-3 p-3.5 rounded-2xl border-2 cursor-pointer transition-all"
                        :class="paymentMethod === 'qris' ? 'border-primary-400 bg-primary-50' : 'border-gray-200 hover:border-gray-300'">
-                    <input type="radio" name="payment_method" value="qris" class="hidden" x-model="paymentMethod">
-                    <div class="w-12 h-12 rounded-xl overflow-hidden flex-shrink-0 flex items-center justify-center bg-white border border-gray-100 shadow-sm">
-                        <div class="text-2xl">📱</div>
-                    </div>
+                    <input type="radio" name="payment_method" value="qris" class="hidden" x-model="paymentMethod" checked>
+                    <div class="w-11 h-11 rounded-xl flex-shrink-0 flex items-center justify-center bg-white border-2 border-gray-200 shadow-sm text-xl">📱</div>
                     <div class="flex-1">
                         <p class="font-bold text-gray-800 text-sm">QRIS</p>
-                        <p class="text-xs text-gray-400">Scan QR dari semua e-wallet</p>
+                        <p class="text-xs text-gray-400">Scan QR dari semua e-wallet & bank</p>
                     </div>
-                    <div class="w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all"
+                    <div class="w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all"
                          :class="paymentMethod === 'qris' ? 'border-primary-500 bg-primary-500' : 'border-gray-300'">
                         <div class="w-2 h-2 bg-white rounded-full" x-show="paymentMethod === 'qris'"></div>
                     </div>
@@ -130,14 +200,12 @@
                 <label class="flex items-center gap-3 p-3.5 rounded-2xl border-2 cursor-pointer transition-all"
                        :class="paymentMethod === 'gopay' ? 'border-primary-400 bg-primary-50' : 'border-gray-200 hover:border-gray-300'">
                     <input type="radio" name="payment_method" value="gopay" class="hidden" x-model="paymentMethod">
-                    <div class="w-12 h-12 rounded-xl overflow-hidden flex-shrink-0 flex items-center justify-center bg-[#00AED6] shadow-sm">
-                        <span class="text-white font-black text-xs">Go</span><span class="text-white font-black text-xs">Pay</span>
-                    </div>
+                    <div class="w-11 h-11 rounded-xl flex-shrink-0 flex items-center justify-center bg-[#00AED6] shadow-sm font-black text-white text-xs">GoPay</div>
                     <div class="flex-1">
                         <p class="font-bold text-gray-800 text-sm">GoPay</p>
                         <p class="text-xs text-gray-400">Bayar via GoPay / GoJek</p>
                     </div>
-                    <div class="w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all"
+                    <div class="w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all"
                          :class="paymentMethod === 'gopay' ? 'border-primary-500 bg-primary-500' : 'border-gray-300'">
                         <div class="w-2 h-2 bg-white rounded-full" x-show="paymentMethod === 'gopay'"></div>
                     </div>
@@ -147,14 +215,12 @@
                 <label class="flex items-center gap-3 p-3.5 rounded-2xl border-2 cursor-pointer transition-all"
                        :class="paymentMethod === 'ovo' ? 'border-primary-400 bg-primary-50' : 'border-gray-200 hover:border-gray-300'">
                     <input type="radio" name="payment_method" value="ovo" class="hidden" x-model="paymentMethod">
-                    <div class="w-12 h-12 rounded-xl flex-shrink-0 flex items-center justify-center bg-[#4B2D8C] shadow-sm">
-                        <span class="text-white font-black text-sm">OVO</span>
-                    </div>
+                    <div class="w-11 h-11 rounded-xl flex-shrink-0 flex items-center justify-center bg-[#4B2D8C] shadow-sm font-black text-white text-sm">OVO</div>
                     <div class="flex-1">
                         <p class="font-bold text-gray-800 text-sm">OVO</p>
                         <p class="text-xs text-gray-400">Bayar via OVO</p>
                     </div>
-                    <div class="w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all"
+                    <div class="w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all"
                          :class="paymentMethod === 'ovo' ? 'border-primary-500 bg-primary-500' : 'border-gray-300'">
                         <div class="w-2 h-2 bg-white rounded-full" x-show="paymentMethod === 'ovo'"></div>
                     </div>
@@ -164,14 +230,12 @@
                 <label class="flex items-center gap-3 p-3.5 rounded-2xl border-2 cursor-pointer transition-all"
                        :class="paymentMethod === 'dana' ? 'border-primary-400 bg-primary-50' : 'border-gray-200 hover:border-gray-300'">
                     <input type="radio" name="payment_method" value="dana" class="hidden" x-model="paymentMethod">
-                    <div class="w-12 h-12 rounded-xl flex-shrink-0 flex items-center justify-center bg-[#118EEA] shadow-sm">
-                        <span class="text-white font-black text-sm">DANA</span>
-                    </div>
+                    <div class="w-11 h-11 rounded-xl flex-shrink-0 flex items-center justify-center bg-[#118EEA] shadow-sm font-black text-white text-sm">DANA</div>
                     <div class="flex-1">
                         <p class="font-bold text-gray-800 text-sm">DANA</p>
                         <p class="text-xs text-gray-400">Bayar via DANA</p>
                     </div>
-                    <div class="w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all"
+                    <div class="w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all"
                          :class="paymentMethod === 'dana' ? 'border-primary-500 bg-primary-500' : 'border-gray-300'">
                         <div class="w-2 h-2 bg-white rounded-full" x-show="paymentMethod === 'dana'"></div>
                     </div>
@@ -181,14 +245,12 @@
                 <label class="flex items-center gap-3 p-3.5 rounded-2xl border-2 cursor-pointer transition-all"
                        :class="paymentMethod === 'shopeepay' ? 'border-primary-400 bg-primary-50' : 'border-gray-200 hover:border-gray-300'">
                     <input type="radio" name="payment_method" value="shopeepay" class="hidden" x-model="paymentMethod">
-                    <div class="w-12 h-12 rounded-xl flex-shrink-0 flex items-center justify-center bg-[#EE4D2D] shadow-sm">
-                        <span class="text-white font-black text-[10px] text-center leading-tight">Shopee<br>Pay</span>
-                    </div>
+                    <div class="w-11 h-11 rounded-xl flex-shrink-0 flex items-center justify-center bg-[#EE4D2D] shadow-sm font-black text-white text-[10px] text-center leading-tight">Shopee<br>Pay</div>
                     <div class="flex-1">
                         <p class="font-bold text-gray-800 text-sm">ShopeePay</p>
                         <p class="text-xs text-gray-400">Bayar via ShopeePay</p>
                     </div>
-                    <div class="w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all"
+                    <div class="w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all"
                          :class="paymentMethod === 'shopeepay' ? 'border-primary-500 bg-primary-500' : 'border-gray-300'">
                         <div class="w-2 h-2 bg-white rounded-full" x-show="paymentMethod === 'shopeepay'"></div>
                     </div>
@@ -198,14 +260,12 @@
                 <label class="flex items-center gap-3 p-3.5 rounded-2xl border-2 cursor-pointer transition-all"
                        :class="paymentMethod === 'linkaja' ? 'border-primary-400 bg-primary-50' : 'border-gray-200 hover:border-gray-300'">
                     <input type="radio" name="payment_method" value="linkaja" class="hidden" x-model="paymentMethod">
-                    <div class="w-12 h-12 rounded-xl flex-shrink-0 flex items-center justify-center bg-[#E82529] shadow-sm">
-                        <span class="text-white font-black text-[10px] text-center leading-tight">Link<br>Aja</span>
-                    </div>
+                    <div class="w-11 h-11 rounded-xl flex-shrink-0 flex items-center justify-center bg-[#E82529] shadow-sm font-black text-white text-[10px] text-center leading-tight">Link<br>Aja</div>
                     <div class="flex-1">
                         <p class="font-bold text-gray-800 text-sm">LinkAja</p>
                         <p class="text-xs text-gray-400">Bayar via LinkAja</p>
                     </div>
-                    <div class="w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all"
+                    <div class="w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all"
                          :class="paymentMethod === 'linkaja' ? 'border-primary-500 bg-primary-500' : 'border-gray-300'">
                         <div class="w-2 h-2 bg-white rounded-full" x-show="paymentMethod === 'linkaja'"></div>
                     </div>
@@ -214,14 +274,19 @@
         </div>
 
         <!-- Submit Button -->
+        {% if table_session.order_type %}
         <button type="submit"
-                class="w-full py-4 gradient-orange text-white text-center font-extrabold rounded-2xl shadow-xl shadow-primary-200 text-base mb-4 ripple transition-all hover:shadow-2xl">
-            Bayar Sekarang • Rp {{ total|floatformat:0 }}
+                class="w-full py-4 gradient-orange text-white text-center font-extrabold rounded-2xl shadow-xl shadow-primary-200 text-base mb-2 ripple transition-all hover:shadow-2xl">
+            <span>Bayar Sekarang</span>
+            <span class="font-normal opacity-90 ml-2">Rp {{ total|floatformat:0 }}</span>
         </button>
-        
-        <p class="text-center text-xs text-gray-400 mb-6">
-            🔒 Transaksi aman & terenkripsi
-        </p>
+        {% else %}
+        <div class="w-full py-4 bg-gray-200 text-gray-400 text-center font-extrabold rounded-2xl text-base mb-2 cursor-not-allowed">
+            Pilih Meja Dahulu
+        </div>
+        {% endif %}
+
+        <p class="text-center text-xs text-gray-400 mb-6">🔒 Transaksi aman & terenkripsi</p>
     </form>
 </div>
 {% endblock %}
